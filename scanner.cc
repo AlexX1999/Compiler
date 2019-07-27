@@ -5,6 +5,7 @@
 #include <utility>
 #include <set>
 #include <array>
+#include <iostream>
 #include "scanner.h"
 
 /*
@@ -24,21 +25,44 @@ Token::Token(Token::Kind kind, std::string lexeme):
 const std::string &Token::getLexeme() const { return lexeme; }
 
 std::ostream &operator<<(std::ostream &out, const Token &tok) {
-  out << "Token(";
   switch (tok.getKind()) {
     case Token::ID:         out << "ID";         break;
-    case Token::LABEL:      out << "LABEL";      break;
-    case Token::WORD:       out << "WORD";       break;
-    case Token::COMMA:      out << "COMMA";      break;
+    case Token::NUM:        out << "NUM";        break;
     case Token::LPAREN:     out << "LPAREN";     break;
     case Token::RPAREN:     out << "RPAREN";     break;
+    case Token::LBRACE:     out << "LBRACE";     break;
+    case Token::RBRACE:     out << "RBRACE";     break;
+    case Token::RETURN:     out << "RETURN";     break;
+    case Token::IF:         out << "IF";         break;
+    case Token::ELSE:       out << "ELSE";       break;
+    case Token::WHILE:      out << "WHILE";      break;
+    case Token::PRINTLN:    out << "PRINTLN";    break;
+    case Token::WAIN:       out << "WAIN";       break;
+    case Token::BECOMES:    out << "BECOMES";    break;
     case Token::INT:        out << "INT";        break;
-    case Token::HEXINT:     out << "HEXINT";     break;
-    case Token::REG:        out << "REG";        break;
+    case Token::EQ:         out << "EQ";         break;
+    case Token::NE:         out << "NE";         break;
+    case Token::LT:         out << "LT";         break;
+    case Token::GT:         out << "GT";         break;
+    case Token::LE:         out << "LE";         break;
+    case Token::GE:         out << "GE";         break;
+    case Token::PLUS:       out << "PLUS";       break;
+    case Token::MINUS:      out << "MINUS";      break;
+    case Token::STAR:       out << "STAR";       break;
+    case Token::SLASH:      out << "SLASH";      break;
+    case Token::PCT:        out << "PCT";        break;
+    case Token::COMMA:      out << "COMMA";      break;
+    case Token::SEMI:       out << "SEMI";       break;
+    case Token::NEW:        out << "NEW";        break;
+    case Token::DELETE:     out << "DELETE";     break;
+    case Token::LBRACK:     out << "LBREAK";     break;
+    case Token::RBRACK:     out << "RBREAK";     break;
+    case Token::AMP:        out << "AMP";        break;
+    case Token::NULL_TYPE:  out << "NULL";       break;
     case Token::WHITESPACE: out << "WHITESPACE"; break;
     case Token::COMMENT:    out << "COMMENT";    break;
   }
-  out << ", " << tok.getLexeme() << ")";
+  out << " " << tok.getLexeme();
 
   return out;
 }
@@ -47,13 +71,8 @@ int64_t Token::toLong() const {
   std::istringstream iss;
   int64_t result;
 
-  if (kind == INT) {
+  if (kind == NUM) {
     iss.str(lexeme);
-  } else if (kind == HEXINT) {
-    iss.str(lexeme.substr(2));
-    iss >> std::hex;
-  } else if (kind == REG) {
-    iss.str(lexeme.substr(1));
   } else {
     // This should never happen if the user calls this function correctly
     return 0;
@@ -73,36 +92,57 @@ const std::string &ScanningFailure::what() const { return message; }
  * process. You should not need to interact with this directly:
  * it is handled through the starter code.
  */
-class AsmDFA {
+class wlp4DFA {
   public:
     enum State {
       // States that are also kinds
       ID = 0,
-      LABEL,
-      COMMA,
+      NUM,
       LPAREN,
       RPAREN,
+      LBRACE,
+      RBRACE,
+      RETURN,
+      IF,
+      ELSE,
+      WHILE,
+      PRINTLN,
+      WAIN,
+      BECOMES,
       INT,
-      HEXINT,
-      REG,
+      EQ,
+      NE,
+      LT,
+      GT,
+      LE,
+      GE,
+      PLUS,
+      MINUS,
+      STAR,
+      SLASH,
+      PCT,
+      COMMA,
+      SEMI,
+      NEW,
+      DELETE,
+      LBRACK,
+      RBRACK,
+      AMP,
+      NULL_TYPE,
       WHITESPACE,
       COMMENT,
 
       // States that are not also kinds
       FAIL,
       START,
-      DOT,
-      DOTID,
+      GanTanHao,
       ZERO,
-      ZEROX,
-      MINUS,
-      DOLLARS,
 
       // Hack to let this be used easily in arrays. This should always be the
       // final element in the enum, and should always point to the previous
       // element.
 
-      LARGEST_STATE = DOLLARS
+      LARGEST_STATE = ZERO
     };
 
   private:
@@ -125,17 +165,41 @@ class AsmDFA {
     Token::Kind stateToKind(State s) const {
       switch(s) {
         case ID:         return Token::ID;
-        case LABEL:      return Token::LABEL;
-        case DOTID:      return Token::WORD;
-        case COMMA:      return Token::COMMA;
+        case NUM:        return Token::NUM;
         case LPAREN:     return Token::LPAREN;
         case RPAREN:     return Token::RPAREN;
+        case LBRACE:     return Token::LBRACE;
+        case RBRACE:     return Token::RBRACE;
+        case RETURN:     return Token::RETURN;
+        case IF:         return Token::IF;
+        case ELSE:       return Token::ELSE;
+        case WHILE:      return Token::WHILE;
+        case PRINTLN:    return Token::PRINTLN;
+        case WAIN:       return Token::WAIN;
+        case BECOMES:    return Token::BECOMES;
         case INT:        return Token::INT;
-        case ZERO:       return Token::INT;
-        case HEXINT:     return Token::HEXINT;
-        case REG:        return Token::REG;
+        case EQ:         return Token::EQ;
+        case NE:         return Token::NE;
+        case LT:         return Token::LT;
+        case GT:         return Token::GT;
+        case LE:         return Token::LE;
+        case GE:         return Token::GE;
+        case PLUS:       return Token::PLUS;
+        case MINUS:      return Token::MINUS;
+        case STAR:       return Token::STAR;
+        case SLASH:      return Token::SLASH;
+        case PCT:        return Token::PCT;
+        case COMMA:      return Token::COMMA;
+        case SEMI:       return Token::SEMI;
+        case NEW:        return Token::NEW;
+        case DELETE:     return Token::DELETE;
+        case LBRACK:     return Token::LBRACK;
+        case RBRACK:     return Token::RBRACK;
+        case AMP:        return Token::AMP;
+        case NULL_TYPE:  return Token::NULL_TYPE;
         case WHITESPACE: return Token::WHITESPACE;
         case COMMENT:    return Token::COMMENT;
+        case ZERO:       return Token::NUM;
         default: throw ScanningFailure("ERROR: Cannot convert state to kind.");
       }
     }
@@ -187,11 +251,11 @@ class AsmDFA {
 
     /* Initializes the accepting states for the DFA.
      */
-    AsmDFA() {
-      acceptingStates = {ID, LABEL, DOTID, HEXINT,
-                           INT, ZERO, COMMA, REG,
-                           LPAREN, RPAREN, WHITESPACE, COMMENT};
-      //Non-accepting states are DOT, MINUS, ZEROX, DOLLARS, START
+    wlp4DFA() {
+      acceptingStates = {ZERO, LPAREN, RPAREN, LBRACE, RBRACE, PLUS,
+                         MINUS, STAR, PCT, COMMA, SEMI, LBRACK, RBRACK,
+                         AMP, ID, NUM, BECOMES, EQ, NE, LT, LE, GT, GE,
+                         SLASH, COMMENT, WHITESPACE};
 
       // Initialize transitions for the DFA
       for (size_t i = 0; i < transitionFunction.size(); ++i) {
@@ -200,32 +264,44 @@ class AsmDFA {
         }
       }
 
-      registerTransition(START, isalpha, ID);
-      registerTransition(START, ".", DOT);
+      // Low-hanging fruit
       registerTransition(START, "0", ZERO);
-      registerTransition(START, "123456789", INT);
-      registerTransition(START, "-", MINUS);
-      registerTransition(START, ";", COMMENT);
-      registerTransition(START, isspace, WHITESPACE);
-      registerTransition(START, "$", DOLLARS);
-      registerTransition(START, ",", COMMA);
       registerTransition(START, "(", LPAREN);
       registerTransition(START, ")", RPAREN);
+      registerTransition(START, "{", LBRACE);
+      registerTransition(START, "}", RBRACE);
+      registerTransition(START, "+", PLUS);
+      registerTransition(START, "-", MINUS);
+      registerTransition(START, "*", STAR);
+      registerTransition(START, "%", PCT);
+      registerTransition(START, ",", COMMA);
+      registerTransition(START, ";", SEMI);
+      registerTransition(START, "]", LBRACK);
+      registerTransition(START, "[", RBRACK);
+      registerTransition(START, "&", AMP);
+      // ID (check for keywords later)
+      registerTransition(START, isalpha, ID);
       registerTransition(ID, isalnum, ID);
-      registerTransition(ID, ":", LABEL);
-      registerTransition(DOT, isalpha, DOTID);
-      registerTransition(DOTID, isalpha, DOTID);
-      registerTransition(ZERO, "x", ZEROX);
-      registerTransition(ZERO, isdigit, INT);
-      registerTransition(ZEROX, isxdigit, HEXINT);
-      registerTransition(HEXINT, isxdigit, HEXINT);
-      registerTransition(MINUS, isdigit, INT);
-      registerTransition(INT, isdigit, INT);
-      registerTransition(COMMENT, [](int c) -> int { return c != '\n'; },
-          COMMENT);
+      // Integer (check for its value later)
+      registerTransition(START, "123456789", NUM);
+      registerTransition(NUM, isdigit, NUM);
+      // Equal
+      registerTransition(START, "=", BECOMES);
+      registerTransition(BECOMES, "=", EQ);
+      // Comparison
+      registerTransition(START, "!", GanTanHao);
+      registerTransition(GanTanHao, "=", NE);
+      registerTransition(START, "<", LT);
+      registerTransition(LT, "=", LE);
+      registerTransition(START, ">", GT);
+      registerTransition(GT, "=", GE);
+      // Single slash and double slash
+      registerTransition(START, "/", SLASH);
+      registerTransition(SLASH, "/", COMMENT);
+      registerTransition(COMMENT, [](int c) -> int { return c != '\n'; }, COMMENT);
+      // Whitespace 
+      registerTransition(START, isspace, WHITESPACE);
       registerTransition(WHITESPACE, isspace, WHITESPACE);
-      registerTransition(DOLLARS, isdigit, REG);
-      registerTransition(REG, isdigit, REG);
     }
 
     // Register a transition on all chars in chars
@@ -274,7 +350,7 @@ class AsmDFA {
 };
 
 std::vector<Token> scan(const std::string &input) {
-  static AsmDFA theDFA;
+  static wlp4DFA theDFA;
 
   std::vector<Token> tokens = theDFA.simplifiedMaximalMunch(input);
 
@@ -284,17 +360,46 @@ std::vector<Token> scan(const std::string &input) {
 
   std::vector<Token> newTokens;
 
-  for (auto &token : tokens) {
-    if (token.getKind() == Token::WORD) {
-      if (token.getLexeme() == ".word") {
-        newTokens.push_back(token);
+  for (auto token = newTokens.begin(); token != newTokens.end(); ++token) {
+    if (token->getKind() == Token::ID) {
+      if (token->getLexeme() == "return") {
+        newTokens.push_back(Token(Token::RETURN, "return"));
+      } else if (token->getLexeme() == "if") {
+        newTokens.push_back(Token(Token::IF, "if"));
+      } else if (token->getLexeme() == "else") {
+        newTokens.push_back(Token(Token::ELSE, "else"));
+      } else if (token->getLexeme() == "while") {
+        newTokens.push_back(Token(Token::WHILE, "while"));
+      } else if (token->getLexeme() == "println") {
+        newTokens.push_back(Token(Token::PRINTLN, "println"));
+      } else if (token->getLexeme() == "wain") {
+        newTokens.push_back(Token(Token::WAIN, "wain"));
+      } else if (token->getLexeme() == "int") {
+        newTokens.push_back(Token(Token::INT, "int"));
+      } else if (token->getLexeme() == "new") {
+        newTokens.push_back(Token(Token::NEW, "new"));
+      } else if (token->getLexeme() == "delete") {
+        newTokens.push_back(Token(Token::DELETE, "delete"));
+      } else if (token->getLexeme() == "NULL") {
+        newTokens.push_back(Token(Token::NULL_TYPE, "NULL"));
       } else {
-        throw ScanningFailure("ERROR: DOTID token unrecognized: " +
-            token.getLexeme());
+        newTokens.push_back(Token(Token::ID, token->getLexeme()));
       }
-    } else if (token.getKind() != Token::WHITESPACE
-        && token.getKind() != Token::Kind::COMMENT) {
-      newTokens.push_back(token);
+    } else if (token->getKind() == Token::NUM) {
+        std::string value = token->getLexeme();
+            
+
+        if (value.length() > 10) {
+            throw ScanningFailure("ERROR: Numeric literal out of range");
+        }
+        int64_t val = token->toLong();
+        int64_t bound = 2147483647;
+        if (val > bound) {
+            throw ScanningFailure("ERROR: Numeric literal out of range");
+        }
+        newTokens.push_back(*token);
+    } else if (token->getKind() != Token::WHITESPACE && token->getKind() != Token::Kind::COMMENT) {
+        newTokens.push_back(*token);
     }
   }
 
