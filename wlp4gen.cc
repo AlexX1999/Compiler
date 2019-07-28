@@ -338,6 +338,8 @@ void build_symboltable(Tree *t) {
         add_variable_to_symboltable(&(t->children[0].children[3]), scope);
         add_variable_to_symboltable(&(t->children[0].children[5]), scope);
         add_variable_to_symboltable(&(t->children[0].children[8]), scope);
+        check_for_use(&(t->children[0].children[9]), scope);
+        check_for_use(&(t->children[0].children[11]), scope);
     } else {
         int num_param = get_param_num(&(t->children[0].children[3]));
         current_offset = num_param * 4;
@@ -360,10 +362,119 @@ void build_symboltable(Tree *t) {
             add_param_to_symboltable(&(t->children[0].children[3].children[0]), scope);
         }
         add_variable_to_symboltable(&(t->children[0].children[6]), scope);
+        check_for_use(&(t->children[0].children[7]), scope);
+        check_for_use(&(t->children[0].children[9]), scope);
         build_symboltable(&(t->children[1]));
     }
 }
 
+void check_for_use(Tree *t, string scope) {
+    if (t->tokens[0] == "factor") {
+        // Variable check
+        if (t->children.size() == 1 && t->tokens[1] == "ID") {
+            if (SymbolTable[scope].find(t->children[0].tokens[1]) == SymbolTable[scope].end()) {
+                cerr << "ERROR: Detect the use of undeclared variable: " << t->children[0].tokens[1] << endl;
+                error_flag = 1;
+                return;
+            }
+        }
+        // Function call check
+        else if (t->children.size() > 1 && t->tokens[2] == "LPAREN") {
+            string fn_name = t->children[0].tokens[1];
+            if (SymbolTable[scope].find(fn_name) != SymbolTable[scope].end() ||
+                    SymbolTable.find(fn_name) == SymbolTable.end()) {
+                cerr << "ERROR: Dectect the use of undeclared function call: " << fn_name << endl;
+                error_flag = 1;
+                return;
+            }
+        }
+    }
+    if (t->tokens[0] == "lvalue" && t->tokens[1] == "ID") {
+        if (SymbolTable[scope].find(t->children[0].tokens[1]) == SymbolTable[scope].end()) {
+            cerr << "ERROR: Detect the use of undeclared variable: " << t->children[0].tokens[1] << endl;
+            error_flag = 1;
+            return;
+        }
+    }
+
+    if (!is_leaf(t)) {
+        int size = t->children.size();
+        for (int i = 0; i < size; ++i) {
+           check_for_use(&(t->children[i]), scope);
+        }
+    }
+}
+
+
+void check_test(Tree *t, string scope) {
+    string LHS_type = get_expr_type(&(t->children[0]), scope);
+    string RHS_type = get_expr_type(&(t->children[2]), scope);
+    if (LHS_type != RHS_type) {
+        cerr << "ERROR: Comparision cannot be made due to type difference" << endl;
+    }
+}
+
+void check_statement(Tree *t, string scope) {
+    if (t->tokens[1] == "lvalue") {
+        string LHS_type = get_lvalue_type(&(t->children[0]), scope);
+        string RHS_type = get_expr_type(&(t->children[2]), scope);
+        if (LHS_type != RHS_type) {
+            cerr << "ERROR: Assignment failed due to type difference" << endl;
+        }
+    } else if (t->tokens[1] == "PRINTLN") {
+        string etype = get_expr_type(&(t->children[2]), scope);
+        if (etype != "int") {
+            cerr << "ERROR: Wrong input type for println: " << etype << endl;
+        }
+    } else if (t->tokens[1] == "DELETE") {
+        string etype = get_expr_type(&(t->children[3]), scope);
+        if (etype != "int*") {
+            cerr << "ERROR: try to delete wrong stuff :" << etype << endl;
+        }
+    }
+} 
+
+string current_scope;
+void expr_type_check(Tree *t) {
+    if (t->tokens[0] == "procedure") {
+        current_scope = t->children[1].tokens[1];
+        string etype = get_expr_type(&(t->children[9]), current_scope);
+        if (etype != "int") {
+            cerr << "ERROR: Wrong return type" << endl;
+        }
+    } else if (t->tokens[0] == "expr") {
+        get_expr_type(t, current_scope);
+    } else if (t->tokens[0] == "lvalue") {
+        get_lvalue_type(t, current_scope);
+    } else if (t->tokens[0] == "main") {
+        current_scope = "wain";
+        string etype = get_expr_type(&(t->children[11]), current_scope);
+        if (etype != "int") {
+            cerr << "ERROR: Wrong return type" << endl;
+        }
+        string second_param_type = SymbolTable[current_scope][t->children[5].children[1].tokens[1]];
+        if (second_param_type == "int*") {
+            cerr << "ERROR: The second parameter of wain cannot be int*" << endl;
+        }
+    } else if (t->tokens[0] == "test") {
+        check_test(t, current_scope);
+    } else if (t->tokens[0] == "statement") {
+        check_statement(t, current_scope);
+    } else if (t->tokens[0] == "dcls" && t->children.size() > 0) {
+        string type = SymbolTable[current_scope][t->children[1].children[1].tokens[1]];
+        if (t->tokens[4] == "NUM" && type != "int") {
+            cerr << "ERROR: Wrong Assignment" << endl;
+        } else if (t->tokens[4] == "NULL" && type != "int*") {
+            cerr << "ERROR: Wrong Assignment" << endl;
+        }
+    }
+    if (!is_leaf(t)) {
+        int size = t->children.size();
+        for (int i = 0; i < size; ++i) {
+            expr_type_check(&(t->children[i]));
+        }
+    }
+}
 
 
 // Input: Register Number
@@ -756,6 +867,12 @@ int main(void) {
     // Build ParseTree and SymbolTable
     build_parsetree(&ParseTree);
     build_symboltable(&(ParseTree.children[1]));
+
+    // check if error has occured during the building process
+    if (error_flag) {
+        return 1;
+    }
+    expr_type_check(&(ParseTree.children[1]));
 
     // Start to output mips instructions
     find_main(&(ParseTree.children[1]));
